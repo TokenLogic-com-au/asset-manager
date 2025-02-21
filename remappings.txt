@@ -1,2 +1,1 @@
 openzeppelin/=lib/openzeppelin-contracts/contracts/
-chainlink/contracts-ccip/=lib/ccip/contracts/src/v0.8/ccip/
