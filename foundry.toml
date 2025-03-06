@@ -1,0 +1,18 @@
+[profile.default]
+src = "src"
+script = 'scripts'
+out = "out"
+test = "test"
+libs = ["lib"]
+evm_version = 'shanghai'
+solc = '0.8.27'
+optimizer_runs = 200
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+[rpc_endpoints]
+mainnet = "${RPC_MAINNET}"
+arbitrum = "${RPC_ARBITRUM}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_API_KEY_MAINNET}", chain = 1 }
+arbitrum = { key = "${ETHERSCAN_API_KEY_ARBITRUM}", chain = 42161 }
