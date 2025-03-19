@@ -54,6 +54,104 @@ contract ArbitrumStrategyManagerTest is Test {
     }
 }
 
+contract ConstructorTest is Test {
+    address public constant AAVE_V3_POOL =
+        0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+    address public constant MERKL_DISTRIBUTOR =
+        0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae;
+    address public constant arbitrumFoundationTreasury = address(100);
+    address public constant hypernative = address(101);
+    address public constant admin = address(104);
+
+    function test_revertsIf_initialAdminIsZeroAddress() public {
+        vm.expectRevert(IArbitrumStrategyManager.InvalidZeroAddress.selector);
+        new ArbitrumStrategyManager(
+            address(0),
+            AAVE_V3_POOL,
+            arbitrumFoundationTreasury,
+            MERKL_DISTRIBUTOR,
+            hypernative
+        );
+    }
+
+    function test_revertsIf_aaveV3PoolIsZeroAddress() public {
+        vm.expectRevert(IArbitrumStrategyManager.InvalidZeroAddress.selector);
+        new ArbitrumStrategyManager(
+            admin,
+            address(0),
+            arbitrumFoundationTreasury,
+            MERKL_DISTRIBUTOR,
+            hypernative
+        );
+    }
+
+    function test_revertsIf_arbFoundationIsZeroAddress() public {
+        vm.expectRevert(IArbitrumStrategyManager.InvalidZeroAddress.selector);
+        new ArbitrumStrategyManager(
+            admin,
+            AAVE_V3_POOL,
+            address(0),
+            MERKL_DISTRIBUTOR,
+            hypernative
+        );
+    }
+
+    function test_revertsIf_merklDistributorIsZeroAddress() public {
+        vm.expectRevert(IArbitrumStrategyManager.InvalidZeroAddress.selector);
+        new ArbitrumStrategyManager(
+            admin,
+            AAVE_V3_POOL,
+            arbitrumFoundationTreasury,
+            address(0),
+            hypernative
+        );
+    }
+
+    function test_revertsIf_hypernativeDistributorIsZeroAddress() public {
+        vm.expectRevert(IArbitrumStrategyManager.InvalidZeroAddress.selector);
+        new ArbitrumStrategyManager(
+            admin,
+            AAVE_V3_POOL,
+            arbitrumFoundationTreasury,
+            MERKL_DISTRIBUTOR,
+            address(0)
+        );
+    }
+
+    function test_successful() public {
+        ArbitrumStrategyManager manager = new ArbitrumStrategyManager(
+            admin,
+            AAVE_V3_POOL,
+            arbitrumFoundationTreasury,
+            MERKL_DISTRIBUTOR,
+            hypernative
+        );
+
+        assertEq(manager._arbFoundation(), arbitrumFoundationTreasury);
+        assertEq(manager._merkl(), MERKL_DISTRIBUTOR);
+        assertEq(manager._hypernative(), hypernative);
+
+        assertTrue(
+            AccessControl(manager).hasRole(manager.CONFIGURATOR_ROLE(), admin)
+        );
+        assertTrue(
+            AccessControl(manager).hasRole(manager.DEFAULT_ADMIN_ROLE(), admin)
+        );
+        assertTrue(
+            AccessControl(manager).hasRole(
+                manager.EMERGENCY_ACTION_ROLE(),
+                admin
+            )
+        );
+        assertTrue(
+            AccessControl(manager).hasRole(
+                manager.EMERGENCY_ACTION_ROLE(),
+                hypernative
+            )
+        );
+    }
+}
+
 contract ClaimRewardsTest is ArbitrumStrategyManagerTest {
     error InvalidProof();
 
@@ -172,35 +270,26 @@ contract EmergencyTokenTransferTest is ArbitrumStrategyManagerTest {
                 manager.CONFIGURATOR_ROLE()
             )
         );
-        manager.emergencyTokenTransfer(WST_ETH, hypernative, 1_000 ether);
-    }
-
-    function test_revertsIf_zeroAddress() public {
-        vm.startPrank(configurator);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IArbitrumStrategyManager.InvalidZeroAddress.selector
-            )
-        );
-        manager.emergencyTokenTransfer(WST_ETH, address(0), 1_000 ether);
-        vm.stopPrank();
+        manager.emergencyTokenTransfer(WST_ETH, 1_000 ether);
     }
 
     function test_success() public {
         uint256 amount = 1_000 ether;
-        uint256 balanceBefore = IERC20(WST_ETH).balanceOf(hypernative);
+        uint256 balanceBefore = IERC20(WST_ETH).balanceOf(
+            manager._arbFoundation()
+        );
 
         vm.startPrank(configurator);
         vm.expectEmit(true, true, true, true, address(manager));
         emit IArbitrumStrategyManager.ERC20Rescued(
             WST_ETH,
-            hypernative,
+            manager._arbFoundation(),
             amount
         );
-        manager.emergencyTokenTransfer(WST_ETH, hypernative, amount);
+        manager.emergencyTokenTransfer(WST_ETH, amount);
 
         assertEq(
-            IERC20(WST_ETH).balanceOf(hypernative),
+            IERC20(WST_ETH).balanceOf(manager._arbFoundation()),
             balanceBefore + amount
         );
         vm.stopPrank();

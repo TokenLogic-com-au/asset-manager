@@ -14,11 +14,11 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     using SafeERC20 for IERC20;
 
     /// @notice Returns the identifier of the Configurator Role
-    /// @return The bytes32 id hash of the Configurator role
+    /// @return The bytes32 id of the Configurator role
     bytes32 public constant CONFIGURATOR_ROLE = "CONFIGURATOR";
 
     /// @notice Returns the identifier of the Emergency Action Role
-    /// @return The bytes32 id hash of the Emergency Action role
+    /// @return The bytes32 id of the Emergency Action role
     bytes32 public constant EMERGENCY_ACTION_ROLE = "EMERGENCY_ACTION";
 
     /// @dev Address of the Aave V3 Pool
@@ -45,15 +45,16 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         address merkl,
         address hypernative
     ) {
-        _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
-        _grantRole(CONFIGURATOR_ROLE, initialAdmin);
-        _grantRole(EMERGENCY_ACTION_ROLE, initialAdmin);
-        _grantRole(EMERGENCY_ACTION_ROLE, hypernative);
-
+        require(initialAdmin != address(0), InvalidZeroAddress());
         require(aaveV3Pool != address(0), InvalidZeroAddress());
         require(arbFoundation != address(0), InvalidZeroAddress());
         require(merkl != address(0), InvalidZeroAddress());
         require(hypernative != address(0), InvalidZeroAddress());
+
+        _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
+        _grantRole(CONFIGURATOR_ROLE, initialAdmin);
+        _grantRole(EMERGENCY_ACTION_ROLE, initialAdmin);
+        _grantRole(EMERGENCY_ACTION_ROLE, hypernative);
 
         _aaveV3Pool = aaveV3Pool;
         _arbFoundation = arbFoundation;
@@ -111,14 +112,11 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     /// @inheritdoc IArbitrumStrategyManager
     function emergencyTokenTransfer(
         address token,
-        address receiver,
         uint256 amount
     ) external onlyRole(CONFIGURATOR_ROLE) {
-        if (receiver == address(0)) revert InvalidZeroAddress();
+        IERC20(token).safeTransfer(_arbFoundation, amount);
 
-        IERC20(token).safeTransfer(receiver, amount);
-
-        emit ERC20Rescued(token, receiver, amount);
+        emit ERC20Rescued(token, _arbFoundation, amount);
     }
 
     /// @inheritdoc IArbitrumStrategyManager

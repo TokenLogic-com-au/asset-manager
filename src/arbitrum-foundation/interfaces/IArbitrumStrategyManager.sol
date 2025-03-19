@@ -71,13 +71,8 @@ interface IArbitrumStrategyManager {
 
     /// @notice Emergency function to transfer ERC20 tokens
     /// @param token The address of the ERC20 token to transfer
-    /// @param receiver The destination address for the tokens
     /// @param amount The amount of tokens to transfer
-    function emergencyTokenTransfer(
-        address token,
-        address receiver,
-        uint256 amount
-    ) external;
+    function emergencyTokenTransfer(address token, uint256 amount) external;
 
     /// @notice Updates the Hypernative address
     /// @param hypernative The new Hypernative address to set
