@@ -21,6 +21,14 @@ interface IArbitrumStrategyManager {
     /// @param newMerkl The new Merkl address
     event MerklUpdated(address oldMerkl, address newMerkl);
 
+    /// @dev Emitted when the maximum position threshold on Aave is updated
+    /// @param oldThreshold The previous threshold (in bps)
+    /// @param newThreshold The new threshold (in bps)
+    event MaxPositionThresholdUpdated(
+        uint256 oldThreshold,
+        uint256 newThreshold
+    );
+
     /// @dev Emitted when the Hypernative address is updated
     /// @param oldHypernative The previous Hypernative address
     /// @param newHypernative The new Hypernative address
@@ -30,6 +38,9 @@ interface IArbitrumStrategyManager {
     /// @param token The address of the token being withdrawn
     /// @param amount The amount of tokens withdrawn
     event WithdrawFromAaveV3(address token, uint256 amount);
+
+    /// @dev Threshold must be lower than 100% (in bps)
+    error InvalidThreshold();
 
     /// @dev Amount must be greater than zero
     error InvalidZeroAmount();
@@ -57,17 +68,9 @@ interface IArbitrumStrategyManager {
     /// @param amount The amount of tokens to withdraw
     function withdrawFromAaveV3(address underlying, uint256 amount) external;
 
-    /// @notice Swaps one ERC20 token for another
-    /// @param from The address of the token to swap from
-    /// @param to The address of the token to swap to
-    /// @param amount The amount of tokens to swap
-    /// @param minAmountOut The minimum amount of output tokens expected
-    function swap(
-        address from,
-        address to,
-        uint256 amount,
-        uint256 minAmountOut
-    ) external;
+    /// @notice Withdraws from AaveV3 to ensure position is never greater than a set % of the pool
+    /// @param underlying Address of the token to withdraw
+    function scaleDown(address underlying) external;
 
     /// @notice Emergency function to transfer ERC20 tokens
     /// @param token The address of the ERC20 token to transfer
@@ -77,4 +80,12 @@ interface IArbitrumStrategyManager {
     /// @notice Updates the Hypernative address
     /// @param hypernative The new Hypernative address to set
     function updateHypernative(address hypernative) external;
+
+    /// @notice Updates the maximum position threshold
+    /// @param newThreshold The new maximum position threshold (in bps)
+    function updateMaxPositionThreshold(uint256 newThreshold) external;
+
+    /// @notice Updates the address of the Merkl contract to claim rewards from
+    /// @param merkl The address of the new Merkl contract
+    function updateMerkl(address merkl) external;
 }

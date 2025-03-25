@@ -252,15 +252,6 @@ contract WithdrawFromAaveV3Test is ArbitrumStrategyManagerTest {
     }
 }
 
-contract SwapTest is ArbitrumStrategyManagerTest {
-    function test_revertsAsUnimplemented() public {
-        vm.startPrank(configurator);
-        vm.expectRevert("NOT IMPLEMENTED");
-        manager.swap(WST_ETH, address(0x123), 1_000 ether, 0);
-        vm.stopPrank();
-    }
-}
-
 contract EmergencyTokenTransferTest is ArbitrumStrategyManagerTest {
     function test_revertsIf_noRole() public {
         vm.expectRevert(
@@ -294,6 +285,22 @@ contract EmergencyTokenTransferTest is ArbitrumStrategyManagerTest {
         );
         vm.stopPrank();
     }
+}
+
+contract ScaleDownTest is ArbitrumStrategyManagerTest {
+    function test_revertsIf_noRole() public {}
+
+    function test_revertsIf_noLiquidity() public {}
+
+    function test_successful() public {}
+}
+
+contract UpdateMaxThresholdTest is ArbitrumStrategyManagerTest {
+    function test_revertsIf_noRole() public {}
+
+    function test_revertsIf_invalidThreshold() public {}
+
+    function test_successful() public {}
 }
 
 contract UpdateHypernativeTest is ArbitrumStrategyManagerTest {

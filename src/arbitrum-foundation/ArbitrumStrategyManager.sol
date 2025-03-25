@@ -21,6 +21,9 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     /// @return The bytes32 id of the Emergency Action role
     bytes32 public constant EMERGENCY_ACTION_ROLE = "EMERGENCY_ACTION";
 
+    /// @dev Maximum allowed basis points (100%)
+    uint256 internal constant MAX_BPS = 10_000;
+
     /// @dev Address of the Aave V3 Pool
     address internal immutable _aaveV3Pool;
 
@@ -32,6 +35,9 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
 
     /// @dev Address of the Hypernative address allowed to call this contract
     address public _hypernative;
+
+    /// @dev Maximum percentage of pool position can have (in bps)
+    uint256 public _maxPositionThreshold = 3000;
 
     /// @param initialAdmin The address of the initial admin of the contract
     /// @param aaveV3Pool The address of the Aave V3 Pool
@@ -100,13 +106,34 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     }
 
     /// @inheritdoc IArbitrumStrategyManager
-    function swap(
-        address from,
-        address to,
-        uint256 amount,
-        uint256 minAmountOut
-    ) external {
-        require(false, "NOT IMPLEMENTED");
+    function scaleDown(
+        address underlying
+    ) external onlyRole(EMERGENCY_ACTION_ROLE) {
+        IPool.ReserveDataLegacy memory data = IPool(_aaveV3Pool).getReserveData(
+            underlying
+        );
+
+        uint256 suppliedAmount = IERC20(data.aTokenAddress).balanceOf(
+            address(this)
+        );
+
+        uint256 totalSupply = IERC20(data.aTokenAddress).totalSupply();
+        uint256 totalVariableDebt = IERC20(data.variableDebtTokenAddress)
+            .totalSupply();
+        uint256 availableLiquidity = totalSupply - totalVariableDebt;
+
+        uint256 thresholdLiquidity = (availableLiquidity *
+            _maxPositionThreshold) / MAX_BPS;
+
+        if (suppliedAmount > thresholdLiquidity) {
+            uint256 excessAmount = suppliedAmount - thresholdLiquidity;
+
+            IPool(_aaveV3Pool).withdraw(
+                underlying,
+                excessAmount,
+                address(this)
+            );
+        }
     }
 
     /// @inheritdoc IArbitrumStrategyManager
@@ -117,6 +144,18 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         IERC20(token).safeTransfer(_arbFoundation, amount);
 
         emit ERC20Rescued(token, _arbFoundation, amount);
+    }
+
+    /// @inheritdoc IArbitrumStrategyManager
+    function updateMaxPositionThreshold(
+        uint256 newThreshold
+    ) external onlyRole(CONFIGURATOR_ROLE) {
+        if (newThreshold > MAX_BPS) revert InvalidThreshold();
+
+        uint256 old = _maxPositionThreshold;
+        _maxPositionThreshold = newThreshold;
+
+        emit MaxPositionThresholdUpdated(old, newThreshold);
     }
 
     /// @inheritdoc IArbitrumStrategyManager
@@ -134,6 +173,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         emit HypernativeUpdated(old, hypernative);
     }
 
+    /// @inheritdoc IArbitrumStrategyManager
     function updateMerkl(address merkl) external onlyRole(CONFIGURATOR_ROLE) {
         require(merkl != address(0), InvalidZeroAddress());
 
