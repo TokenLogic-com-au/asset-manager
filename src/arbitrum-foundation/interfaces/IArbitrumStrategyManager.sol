@@ -5,10 +5,9 @@ interface IArbitrumStrategyManager {
     /// @dev Emitted when the rewards earned via Merkl are claimed by the contract
     event ClaimedMerklRewards();
 
-    /// @dev Emitted when tokens are deposited into the Aave V3 protocol
-    /// @param token The address of the token being deposited
+    /// @dev Emitted when wstETH is deposited into the Aave V3 protocol
     /// @param amount The amount of tokens deposited
-    event DepositIntoAaveV3(address token, uint256 amount);
+    event DepositIntoAaveV3(uint256 amount);
 
     /// @dev Emitted when an ERC20 token is rescued from the contract
     /// @param token The address of the rescued ERC20 token
@@ -34,10 +33,9 @@ interface IArbitrumStrategyManager {
     /// @param newHypernative The new Hypernative address
     event HypernativeUpdated(address oldHypernative, address newHypernative);
 
-    /// @dev Emitted when tokens are withdrawn from the Aave V3 protocol
-    /// @param token The address of the token being withdrawn
+    /// @dev Emitted when wstETH is withdrawn from the Aave V3 protocol
     /// @param amount The amount of tokens withdrawn
-    event WithdrawFromAaveV3(address token, uint256 amount);
+    event WithdrawFromAaveV3(uint256 amount);
 
     /// @dev Threshold must be lower than 100% (in bps)
     error InvalidThreshold();
@@ -59,18 +57,18 @@ interface IArbitrumStrategyManager {
     ) external;
 
     /// @notice Deposits underlying tokens into the Aave V3 protocol
-    /// @param underlying The address of the token to deposit
     /// @param amount The amount of tokens to deposit
-    function depositIntoAaveV3(address underlying, uint256 amount) external;
+    function depositIntoAaveV3(uint256 amount) external;
 
     /// @notice Withdraws tokens from the Aave V3 protocol
-    /// @param underlying The address of the token to withdraw
     /// @param amount The amount of tokens to withdraw
-    function withdrawFromAaveV3(address underlying, uint256 amount) external;
+    function withdrawFromAaveV3(uint256 amount) external;
+
+    /// @notice Withdraws all tokens from the Aave V3 protocol
+    function withdrawAll() external;
 
     /// @notice Withdraws from AaveV3 to ensure position is never greater than a set % of the pool
-    /// @param underlying Address of the token to withdraw
-    function scaleDown(address underlying) external;
+    function scaleDown() external;
 
     /// @notice Emergency function to transfer ERC20 tokens
     /// @param token The address of the ERC20 token to transfer
@@ -88,4 +86,7 @@ interface IArbitrumStrategyManager {
     /// @notice Updates the address of the Merkl contract to claim rewards from
     /// @param merkl The address of the new Merkl contract
     function updateMerkl(address merkl) external;
+
+    /// @notice Returns the position percentage relative to the available liquidity in the pool (in bps)
+    function getPositionPct() external view returns (uint256);
 }

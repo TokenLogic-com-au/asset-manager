@@ -24,6 +24,17 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     /// @dev Maximum allowed basis points (100%)
     uint256 internal constant MAX_BPS = 10_000;
 
+    /// @dev Buffer used when scaling down a position to not be close to threshold
+    uint256 internal constant BPS_BUFFER = 500;
+
+    /// @dev Address of wstETH on Arbitrum
+    address public constant WST_ETH =
+        0x5979D7b546E38E414F7E9822514be443A4800529;
+
+    /// @dev Address of the V3 wstETH aToken on Arbitrum
+    address public constant WST_ETH_A_TOKEN =
+        0x513c7E3a9c69cA3e22550eF58AC1C0088e918FFf;
+
     /// @dev Address of the Aave V3 Pool
     address internal immutable _aaveV3Pool;
 
@@ -77,62 +88,60 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         address[] memory users = new address[](1);
         users[0] = address(this);
         IMerkl(_merkl).claim(users, tokens, amounts, proofs);
+
         emit ClaimedMerklRewards();
     }
 
     /// @inheritdoc IArbitrumStrategyManager
     function depositIntoAaveV3(
-        address underlying,
         uint256 amount
     ) external onlyRole(CONFIGURATOR_ROLE) {
         if (amount == 0) revert InvalidZeroAmount();
 
-        IERC20(underlying).forceApprove(_aaveV3Pool, amount);
-        IPool(_aaveV3Pool).supply(underlying, amount, address(this), 0);
+        IERC20(WST_ETH).forceApprove(_aaveV3Pool, amount);
+        IPool(_aaveV3Pool).supply(WST_ETH, amount, address(this), 0);
 
-        emit DepositIntoAaveV3(underlying, amount);
+        emit DepositIntoAaveV3(amount);
     }
 
     /// @inheritdoc IArbitrumStrategyManager
     function withdrawFromAaveV3(
-        address underlying,
         uint256 amount
-    ) external onlyRole(EMERGENCY_ACTION_ROLE) {
+    ) external onlyRole(CONFIGURATOR_ROLE) {
         if (amount == 0) revert InvalidZeroAmount();
 
-        IPool(_aaveV3Pool).withdraw(underlying, amount, address(this));
+        IPool(_aaveV3Pool).withdraw(WST_ETH, amount, address(this));
 
-        emit WithdrawFromAaveV3(underlying, amount);
+        emit WithdrawFromAaveV3(amount);
     }
 
     /// @inheritdoc IArbitrumStrategyManager
-    function scaleDown(
-        address underlying
-    ) external onlyRole(EMERGENCY_ACTION_ROLE) {
-        IPool.ReserveDataLegacy memory data = IPool(_aaveV3Pool).getReserveData(
-            underlying
-        );
-
-        uint256 suppliedAmount = IERC20(data.aTokenAddress).balanceOf(
+    function withdrawAll() external onlyRole(EMERGENCY_ACTION_ROLE) {
+        uint256 amount = IPool(_aaveV3Pool).withdraw(
+            WST_ETH,
+            type(uint256).max,
             address(this)
         );
 
-        uint256 totalSupply = IERC20(data.aTokenAddress).totalSupply();
-        uint256 totalVariableDebt = IERC20(data.variableDebtTokenAddress)
-            .totalSupply();
-        uint256 availableLiquidity = totalSupply - totalVariableDebt;
+        emit WithdrawFromAaveV3(amount);
+    }
 
+    /// @inheritdoc IArbitrumStrategyManager
+    function scaleDown() external onlyRole(EMERGENCY_ACTION_ROLE) {
+        uint256 suppliedAmount = IERC20(WST_ETH_A_TOKEN).balanceOf(
+            address(this)
+        );
+        uint256 availableLiquidity = IPool(_aaveV3Pool)
+            .getVirtualUnderlyingBalance(WST_ETH);
         uint256 thresholdLiquidity = (availableLiquidity *
-            _maxPositionThreshold) / MAX_BPS;
+            (_maxPositionThreshold - BPS_BUFFER)) / MAX_BPS;
 
         if (suppliedAmount > thresholdLiquidity) {
             uint256 excessAmount = suppliedAmount - thresholdLiquidity;
 
-            IPool(_aaveV3Pool).withdraw(
-                underlying,
-                excessAmount,
-                address(this)
-            );
+            IPool(_aaveV3Pool).withdraw(WST_ETH, excessAmount, address(this));
+
+            emit WithdrawFromAaveV3(excessAmount);
         }
     }
 
@@ -181,5 +190,16 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         _merkl = merkl;
 
         emit MerklUpdated(old, merkl);
+    }
+
+    /// @inheritdoc IArbitrumStrategyManager
+    function getPositionPct() external view returns (uint256) {
+        uint256 suppliedAmount = IERC20(WST_ETH_A_TOKEN).balanceOf(
+            address(this)
+        );
+        uint256 availableLiquidity = IPool(_aaveV3Pool)
+            .getVirtualUnderlyingBalance(WST_ETH);
+
+        return (suppliedAmount * MAX_BPS) / availableLiquidity;
     }
 }

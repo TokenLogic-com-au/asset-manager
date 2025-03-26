@@ -45,7 +45,7 @@ contract ArbitrumStrategyManagerTest is Test {
         vm.label(hypernative, "Hypernative");
         vm.label(address(manager), "ArbitrumStrategyManager");
 
-        deal(WST_ETH, address(manager), 1_000 ether);
+        deal(WST_ETH, address(manager), 100_000 ether);
 
         // Assign roles
         vm.startPrank(admin);
@@ -178,7 +178,7 @@ contract DepositIntoAaveV3Test is ArbitrumStrategyManagerTest {
                 manager.CONFIGURATOR_ROLE()
             )
         );
-        manager.depositIntoAaveV3(WST_ETH, 1_000e6);
+        manager.depositIntoAaveV3(1_000e6);
     }
 
     function test_revertsIf_zeroAmount() public {
@@ -188,7 +188,7 @@ contract DepositIntoAaveV3Test is ArbitrumStrategyManagerTest {
                 IArbitrumStrategyManager.InvalidZeroAmount.selector
             )
         );
-        manager.depositIntoAaveV3(WST_ETH, 0);
+        manager.depositIntoAaveV3(0);
         vm.stopPrank();
     }
 
@@ -200,8 +200,8 @@ contract DepositIntoAaveV3Test is ArbitrumStrategyManagerTest {
 
         vm.startPrank(configurator);
         vm.expectEmit(true, true, true, true, address(manager));
-        emit IArbitrumStrategyManager.DepositIntoAaveV3(WST_ETH, amount);
-        manager.depositIntoAaveV3(WST_ETH, amount);
+        emit IArbitrumStrategyManager.DepositIntoAaveV3(amount);
+        manager.depositIntoAaveV3(amount);
 
         assertGt(
             IERC20(WST_ETH_A_TOKEN).balanceOf(address(manager)),
@@ -217,39 +217,85 @@ contract WithdrawFromAaveV3Test is ArbitrumStrategyManagerTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                manager.EMERGENCY_ACTION_ROLE()
+                manager.CONFIGURATOR_ROLE()
             )
         );
-        manager.withdrawFromAaveV3(WST_ETH, 1_000 ether);
+        manager.withdrawFromAaveV3(1_000 ether);
     }
 
     function test_revertsIf_zeroAmount() public {
-        vm.startPrank(hypernative); // Has EMERGENCY_ACTION_ROLE from constructor
+        vm.startPrank(configurator);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IArbitrumStrategyManager.InvalidZeroAmount.selector
             )
         );
-        manager.withdrawFromAaveV3(WST_ETH, 0);
+        manager.withdrawFromAaveV3(0);
         vm.stopPrank();
     }
 
     function test_success() public {
         // First deposit to have something to withdraw
         vm.prank(configurator);
-        manager.depositIntoAaveV3(WST_ETH, 1_000 ether);
+        manager.depositIntoAaveV3(1_000 ether);
 
         uint256 balanceBefore = IERC20(WST_ETH).balanceOf(address(manager));
         uint256 amount = 500 ether;
 
-        vm.startPrank(hypernative); // Has EMERGENCY_ACTION_ROLE
+        vm.startPrank(configurator);
         vm.expectEmit(true, true, true, true, address(manager));
-        emit IArbitrumStrategyManager.WithdrawFromAaveV3(WST_ETH, amount);
-        manager.withdrawFromAaveV3(WST_ETH, amount);
+        emit IArbitrumStrategyManager.WithdrawFromAaveV3(amount);
+        manager.withdrawFromAaveV3(amount);
 
         assertGt(IERC20(WST_ETH).balanceOf(address(manager)), balanceBefore);
         vm.stopPrank();
     }
+}
+
+contract WithdrawAllTest is ArbitrumStrategyManagerTest {
+    function test_revertsIf_noRole() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                manager.EMERGENCY_ACTION_ROLE()
+            )
+        );
+        manager.withdrawAll();
+    }
+
+    function test_successful() public {
+        uint256 amount = 1_000 ether;
+
+        assertEq(IERC20(WST_ETH_A_TOKEN).balanceOf(address(manager)), 0);
+        // First deposit to have something to withdraw
+        vm.prank(configurator);
+        manager.depositIntoAaveV3(amount);
+
+        assertEq(IERC20(WST_ETH_A_TOKEN).balanceOf(address(manager)), amount);
+
+        vm.prank(hypernative);
+        manager.withdrawAll();
+
+        assertEq(IERC20(WST_ETH_A_TOKEN).balanceOf(address(manager)), 0);
+    }
+}
+
+contract ScaleDownTest is ArbitrumStrategyManagerTest {
+    function test_revertsIf_noRole() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                manager.EMERGENCY_ACTION_ROLE()
+            )
+        );
+        manager.scaleDown();
+    }
+
+    function test_revertsIf_noLiquidity() public {}
+
+    function test_successful() public {}
 }
 
 contract EmergencyTokenTransferTest is ArbitrumStrategyManagerTest {
@@ -287,20 +333,40 @@ contract EmergencyTokenTransferTest is ArbitrumStrategyManagerTest {
     }
 }
 
-contract ScaleDownTest is ArbitrumStrategyManagerTest {
-    function test_revertsIf_noRole() public {}
-
-    function test_revertsIf_noLiquidity() public {}
-
-    function test_successful() public {}
-}
-
 contract UpdateMaxThresholdTest is ArbitrumStrategyManagerTest {
-    function test_revertsIf_noRole() public {}
+    function test_revertsIf_noRole() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                manager.CONFIGURATOR_ROLE()
+            )
+        );
+        manager.updateMaxPositionThreshold(500);
+    }
 
-    function test_revertsIf_invalidThreshold() public {}
+    function test_revertsIf_invalidThreshold() public {
+        vm.startPrank(configurator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IArbitrumStrategyManager.InvalidThreshold.selector
+            )
+        );
+        manager.updateMaxPositionThreshold(10_001);
+    }
 
-    function test_successful() public {}
+    function test_successful() public {
+        uint256 newThreshold = 2350;
+
+        vm.startPrank(configurator);
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.MaxPositionThresholdUpdated(
+            manager._maxPositionThreshold(),
+            newThreshold
+        );
+        manager.updateMaxPositionThreshold(newThreshold);
+        vm.stopPrank();
+    }
 }
 
 contract UpdateHypernativeTest is ArbitrumStrategyManagerTest {
@@ -386,7 +452,6 @@ contract UpdateMerklTest is ArbitrumStrategyManagerTest {
             )
         );
         manager.updateMerkl(address(0));
-        vm.stopPrank();
     }
 
     function test_success() public {
@@ -395,6 +460,21 @@ contract UpdateMerklTest is ArbitrumStrategyManagerTest {
         vm.expectEmit(true, true, true, true, address(manager));
         emit IArbitrumStrategyManager.MerklUpdated(MERKL_DISTRIBUTOR, newMerkl);
         manager.updateMerkl(newMerkl);
-        vm.stopPrank();
+    }
+}
+
+contract GetPositionPct is ArbitrumStrategyManagerTest {
+    function test_success_noDeposit() public view {
+        assertEq(manager.getPositionPct(), 0);
+    }
+
+    function test_success_withBalance() public {
+        // First deposit to have something to withdraw
+        vm.prank(configurator);
+        manager.depositIntoAaveV3(1_000 ether);
+
+        uint256 pct = manager.getPositionPct();
+
+        assertEq(pct, 258);
     }
 }

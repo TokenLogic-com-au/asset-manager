@@ -54,6 +54,15 @@ interface IPool {
     ) external view returns (ReserveDataLegacy memory);
 
     /**
+     * @notice Returns the virtual underlying balance of the reserve
+     * @param asset The address of the underlying asset of the reserve
+     * @return The reserve virtual underlying balance
+     */
+    function getVirtualUnderlyingBalance(
+        address asset
+    ) external view returns (uint128);
+
+    /**
      * @notice Supplies an `amount` of underlying asset into the reserve, receiving in return overlying aTokens.
      * - E.g. User supplies 100 USDC and gets in return 100 aUSDC
      * @param asset The address of the underlying asset to supply
