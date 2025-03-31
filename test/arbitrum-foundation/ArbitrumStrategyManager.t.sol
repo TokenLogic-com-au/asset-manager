@@ -275,6 +275,8 @@ contract WithdrawAllTest is ArbitrumStrategyManagerTest {
         assertEq(IERC20(WST_ETH_A_TOKEN).balanceOf(address(manager)), amount);
 
         vm.prank(hypernative);
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.WithdrawFromAaveV3(amount);
         manager.withdrawAll();
 
         assertEq(IERC20(WST_ETH_A_TOKEN).balanceOf(address(manager)), 0);
@@ -293,10 +295,27 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         manager.scaleDown();
     }
 
-    function test_revertsIf_noLiquidity() public {}
-
     function test_successful() public {
-        vm.startPrank(configurator);
+        vm.prank(configurator);
+        manager.depositIntoAaveV3(20_000 ether);
+        (uint256 pct, uint256 availableLiquidity) = manager.getPositionData();
+
+        // Position is now greater than maximum threshold, can scale down
+        assertGt(pct, manager._maxPositionThreshold());
+
+        uint256 bpsToReduce = (pct - manager._maxPositionThreshold()) +
+            manager.BPS_BUFFER();
+        uint256 excessAmount = (availableLiquidity * bpsToReduce) /
+            manager.MAX_BPS();
+
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.WithdrawFromAaveV3(excessAmount);
+
+        vm.prank(hypernative);
+        manager.scaleDown();
+
+        (pct, ) = manager.getPositionData();
+        assertLt(pct, manager._maxPositionThreshold());
     }
 }
 

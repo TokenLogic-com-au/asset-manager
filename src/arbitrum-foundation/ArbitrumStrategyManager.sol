@@ -22,10 +22,10 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     bytes32 public constant EMERGENCY_ACTION_ROLE = "EMERGENCY_ACTION";
 
     /// @dev Maximum allowed basis points (100%)
-    uint256 internal constant MAX_BPS = 10_000;
+    uint256 public constant MAX_BPS = 10_000;
 
     /// @dev Buffer used when scaling down a position to not be close to threshold
-    uint256 internal constant BPS_BUFFER = 500;
+    uint256 public constant BPS_BUFFER = 500;
 
     /// @dev Address of wstETH on Arbitrum
     address public constant WST_ETH =
