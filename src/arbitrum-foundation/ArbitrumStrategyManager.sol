@@ -39,7 +39,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     address internal immutable _aaveV3Pool;
 
     /// @dev Address of the Arbitrum Foundation treasury
-    address public _arbFoundation;
+    address public immutable _arbFoundation;
 
     /// @dev Address of the Merkl contract to claim rewards from
     address public _merkl;
