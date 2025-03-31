@@ -295,7 +295,9 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
 
     function test_revertsIf_noLiquidity() public {}
 
-    function test_successful() public {}
+    function test_successful() public {
+        vm.startPrank(configurator);
+    }
 }
 
 contract EmergencyTokenTransferTest is ArbitrumStrategyManagerTest {
@@ -465,7 +467,8 @@ contract UpdateMerklTest is ArbitrumStrategyManagerTest {
 
 contract GetPositionPct is ArbitrumStrategyManagerTest {
     function test_success_noDeposit() public view {
-        assertEq(manager.getPositionPct(), 0);
+        (uint256 pct, ) = manager.getPositionData();
+        assertEq(pct, 0);
     }
 
     function test_success_withBalance() public {
@@ -473,7 +476,7 @@ contract GetPositionPct is ArbitrumStrategyManagerTest {
         vm.prank(configurator);
         manager.depositIntoAaveV3(1_000 ether);
 
-        uint256 pct = manager.getPositionPct();
+        (uint256 pct, ) = manager.getPositionData();
 
         assertEq(pct, 258);
     }

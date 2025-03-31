@@ -96,7 +96,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     function depositIntoAaveV3(
         uint256 amount
     ) external onlyRole(CONFIGURATOR_ROLE) {
-        if (amount == 0) revert InvalidZeroAmount();
+        require(amount > 0, InvalidZeroAmount());
 
         IERC20(WST_ETH).forceApprove(_aaveV3Pool, amount);
         IPool(_aaveV3Pool).supply(WST_ETH, amount, address(this), 0);
@@ -108,7 +108,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     function withdrawFromAaveV3(
         uint256 amount
     ) external onlyRole(CONFIGURATOR_ROLE) {
-        if (amount == 0) revert InvalidZeroAmount();
+        require(amount > 0, InvalidZeroAmount());
 
         IPool(_aaveV3Pool).withdraw(WST_ETH, amount, address(this));
 
@@ -128,17 +128,12 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
 
     /// @inheritdoc IArbitrumStrategyManager
     function scaleDown() external onlyRole(EMERGENCY_ACTION_ROLE) {
-        uint256 suppliedAmount = IERC20(WST_ETH_A_TOKEN).balanceOf(
-            address(this)
-        );
-        uint256 availableLiquidity = IPool(_aaveV3Pool)
-            .getVirtualUnderlyingBalance(WST_ETH);
-        uint256 thresholdLiquidity = (availableLiquidity *
-            (_maxPositionThreshold - BPS_BUFFER)) / MAX_BPS;
+        (uint256 positionPct, uint256 availableLiquidity) = _getPositionData();
 
-        if (suppliedAmount > thresholdLiquidity) {
-            uint256 excessAmount = suppliedAmount - thresholdLiquidity;
-
+        if (positionPct > _maxPositionThreshold) {
+            uint256 bpsToReduce = (positionPct - _maxPositionThreshold) +
+                BPS_BUFFER;
+            uint256 excessAmount = (availableLiquidity * bpsToReduce) / MAX_BPS;
             IPool(_aaveV3Pool).withdraw(WST_ETH, excessAmount, address(this));
 
             emit WithdrawFromAaveV3(excessAmount);
@@ -159,7 +154,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     function updateMaxPositionThreshold(
         uint256 newThreshold
     ) external onlyRole(CONFIGURATOR_ROLE) {
-        if (newThreshold > MAX_BPS) revert InvalidThreshold();
+        require(MAX_BPS > newThreshold, InvalidThreshold());
 
         uint256 old = _maxPositionThreshold;
         _maxPositionThreshold = newThreshold;
@@ -171,7 +166,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     function updateHypernative(
         address hypernative
     ) external onlyRole(CONFIGURATOR_ROLE) {
-        if (hypernative == address(0)) revert InvalidZeroAddress();
+        require(hypernative != address(0), InvalidZeroAddress());
 
         address old = _hypernative;
         _hypernative = hypernative;
@@ -193,13 +188,23 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     }
 
     /// @inheritdoc IArbitrumStrategyManager
-    function getPositionPct() external view returns (uint256) {
+    function getPositionData() external view returns (uint256, uint256) {
+        return _getPositionData();
+    }
+
+    /// @dev Internal function to return position data
+    /// @return Position size in percentage (in bps)
+    /// @return Available liquidity in pool
+    function _getPositionData() internal view returns (uint256, uint256) {
         uint256 suppliedAmount = IERC20(WST_ETH_A_TOKEN).balanceOf(
             address(this)
         );
         uint256 availableLiquidity = IPool(_aaveV3Pool)
             .getVirtualUnderlyingBalance(WST_ETH);
 
-        return (suppliedAmount * MAX_BPS) / availableLiquidity;
+        return (
+            (suppliedAmount * MAX_BPS) / availableLiquidity,
+            availableLiquidity
+        );
     }
 }

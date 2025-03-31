@@ -88,5 +88,7 @@ interface IArbitrumStrategyManager {
     function updateMerkl(address merkl) external;
 
     /// @notice Returns the position percentage relative to the available liquidity in the pool (in bps)
-    function getPositionPct() external view returns (uint256);
+    /// @return Position size in percentage (in bps)
+    /// @return Available liquidity in pool
+    function getPositionData() external view returns (uint256, uint256);
 }
