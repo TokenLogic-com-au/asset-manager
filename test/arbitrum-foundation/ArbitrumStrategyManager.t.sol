@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AccessControl, IAccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
+import {IPool} from "src/arbitrum-foundation/interfaces/IPool.sol";
 
 import {ArbitrumStrategyManager, IArbitrumStrategyManager} from "src/arbitrum-foundation/ArbitrumStrategyManager.sol";
 
@@ -293,6 +295,39 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
             )
         );
         manager.scaleDown();
+    }
+
+    function test_minimum() public {
+        uint256 availableLiquidity = IPool(AAVE_V3_POOL)
+            .getVirtualUnderlyingBalance(WST_ETH);
+        
+        /// MAX_BPS     - availableLiquidity
+        /// MIN_BPS (1) - minThresholdAmount
+        uint256 minThresholdAmount = availableLiquidity / manager.MAX_BPS();
+        vm.startPrank(configurator);
+        manager.updateMaxPositionThreshold(1);
+        manager.depositIntoAaveV3(minThresholdAmount);
+
+        (uint256 pct, uint256 newAvailableLiquidity) = manager.getPositionData();
+
+        uint256 bpsToReduce = (pct - manager._maxPositionThreshold()) +
+            manager.BPS_BUFFER();
+
+        console.log(newAvailableLiquidity);
+        // console.log(bpsToReduce);
+        console.log(manager.MAX_BPS());
+        // uint256 excessAmount = (newAvailableLiquidity * bpsToReduce) /
+        //     manager.MAX_BPS();
+
+        // vm.expectEmit(true, true, true, true, address(manager));
+        // emit IArbitrumStrategyManager.WithdrawFromAaveV3(excessAmount);
+
+        // vm.prank(hypernative);
+        // manager.scaleDown();
+
+        // (pct, ) = manager.getPositionData();
+        // assertLt(pct, manager._maxPositionThreshold());
+
     }
 
     function test_successful() public {
