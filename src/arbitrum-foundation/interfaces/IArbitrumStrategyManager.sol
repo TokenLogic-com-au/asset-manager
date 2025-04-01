@@ -46,6 +46,9 @@ interface IArbitrumStrategyManager {
     /// @dev Address cannot be the zero-address
     error InvalidZeroAddress();
 
+    /// @dev Position size after deposit is below threshold
+    error InvalidDeposit();
+
     /// @notice Claims rewards from Merkl system
     /// @param tokens Array with addresses of tokens to claim rewards for
     /// @param amounts Array with amounts of tokens to claim
@@ -90,5 +93,6 @@ interface IArbitrumStrategyManager {
     /// @notice Returns the position percentage relative to the available liquidity in the pool (in bps)
     /// @return Position size in percentage (in bps)
     /// @return Available liquidity in pool
-    function getPositionData() external view returns (uint256, uint256);
+    /// @return Position size
+    function getPositionData() external view returns (uint256, uint256, uint256);
 }

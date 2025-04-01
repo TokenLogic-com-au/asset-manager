@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AccessControl, IAccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
+import {IPool} from "src/arbitrum-foundation/interfaces/IPool.sol";
 
 import {ArbitrumStrategyManager, IArbitrumStrategyManager} from "src/arbitrum-foundation/ArbitrumStrategyManager.sol";
 
@@ -29,7 +31,7 @@ contract ArbitrumStrategyManagerTest is Test {
     ArbitrumStrategyManager public manager;
 
     function setUp() public {
-        vm.createSelectFork(vm.rpcUrl("arbitrum"), 312933020); // https://arbiscan.io/block/312933020
+        vm.createSelectFork(vm.rpcUrl("arbitrum"), 321886638); // https://arbiscan.io/block/321886638
 
         manager = new ArbitrumStrategyManager(
             admin,
@@ -295,10 +297,45 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         manager.scaleDown();
     }
 
+    function test_minimum_deposit_successful() public {
+        uint256 availableLiquidity = IPool(AAVE_V3_POOL)
+            .getVirtualUnderlyingBalance(WST_ETH);
+        uint256 maxBPS = manager.MAX_BPS();
+        uint256 bufferBPS = manager.BPS_BUFFER();
+
+        uint256 maxPositionThreshold = 1;
+        
+        /// MAX_BPS     - availableLiquidity
+        /// MIN_POSITION_BPS - minThresholdAmount
+        uint256 minThresholdAmount = availableLiquidity / maxBPS;
+        vm.startPrank(configurator);
+        manager.updateMaxPositionThreshold(maxPositionThreshold);
+        manager.depositIntoAaveV3(4.3 ether);
+        vm.stopPrank();
+
+        (uint256 pct, uint256 newAvailableLiquidity, uint256 positionSize) = manager.getPositionData();
+
+        uint256 bpsToReduce = pct + bufferBPS - maxPositionThreshold;
+        uint256 excessAmount = (newAvailableLiquidity * bpsToReduce) / maxBPS;
+
+        if (excessAmount > positionSize) {
+            excessAmount = positionSize;
+        }
+
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.WithdrawFromAaveV3(excessAmount);
+
+        vm.prank(hypernative);
+        manager.scaleDown();
+
+        (pct, ,) = manager.getPositionData();
+        assertLt(pct, manager._maxPositionThreshold());
+    }
+
     function test_successful() public {
         vm.prank(configurator);
         manager.depositIntoAaveV3(20_000 ether);
-        (uint256 pct, uint256 availableLiquidity) = manager.getPositionData();
+        (uint256 pct, uint256 availableLiquidity,) = manager.getPositionData();
 
         // Position is now greater than maximum threshold, can scale down
         assertGt(pct, manager._maxPositionThreshold());
@@ -314,7 +351,7 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         vm.prank(hypernative);
         manager.scaleDown();
 
-        (pct, ) = manager.getPositionData();
+        (pct, ,) = manager.getPositionData();
         assertLt(pct, manager._maxPositionThreshold());
     }
 }
@@ -486,7 +523,7 @@ contract UpdateMerklTest is ArbitrumStrategyManagerTest {
 
 contract GetPositionPct is ArbitrumStrategyManagerTest {
     function test_success_noDeposit() public view {
-        (uint256 pct, ) = manager.getPositionData();
+        (uint256 pct, ,) = manager.getPositionData();
         assertEq(pct, 0);
     }
 
@@ -495,8 +532,8 @@ contract GetPositionPct is ArbitrumStrategyManagerTest {
         vm.prank(configurator);
         manager.depositIntoAaveV3(1_000 ether);
 
-        (uint256 pct, ) = manager.getPositionData();
+        (uint256 pct, ,) = manager.getPositionData();
 
-        assertEq(pct, 258);
+        assertEq(pct, 274);
     }
 }

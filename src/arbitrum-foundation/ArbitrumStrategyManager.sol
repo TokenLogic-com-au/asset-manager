@@ -128,11 +128,22 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
 
     /// @inheritdoc IArbitrumStrategyManager
     function scaleDown() external onlyRole(EMERGENCY_ACTION_ROLE) {
-        (uint256 positionPct, uint256 availableLiquidity) = _getPositionData();
+        (
+            uint256 positionPct, 
+            uint256 availableLiquidity, 
+            uint256 suppliedAmount
+        ) = _getPositionData();
 
-        if (positionPct > _maxPositionThreshold) {
+        if (positionPct >= _maxPositionThreshold) {
             uint256 bpsToReduce = positionPct + BPS_BUFFER - _maxPositionThreshold;
             uint256 excessAmount = (availableLiquidity * bpsToReduce) / MAX_BPS;
+            
+            /// this happens when positionPct and _maxPositionThreshold 
+            /// have lower values compared to BPS_BUFFER
+            if (excessAmount > suppliedAmount) {
+                excessAmount = suppliedAmount;
+            }
+
             IPool(_aaveV3Pool).withdraw(WST_ETH, excessAmount, address(this));
 
             emit WithdrawFromAaveV3(excessAmount);
@@ -153,7 +164,8 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     function updateMaxPositionThreshold(
         uint256 newThreshold
     ) external onlyRole(CONFIGURATOR_ROLE) {
-        require(MAX_BPS > newThreshold, InvalidThreshold());
+        require(newThreshold > 0, InvalidZeroAmount());
+        require(newThreshold < MAX_BPS , InvalidThreshold());
 
         uint256 old = _maxPositionThreshold;
         _maxPositionThreshold = newThreshold;
@@ -187,14 +199,14 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     }
 
     /// @inheritdoc IArbitrumStrategyManager
-    function getPositionData() external view returns (uint256, uint256) {
+    function getPositionData() external view returns (uint256, uint256, uint256) {
         return _getPositionData();
     }
 
     /// @dev Internal function to return position data
     /// @return Position size in percentage (in bps)
     /// @return Available liquidity in pool
-    function _getPositionData() internal view returns (uint256, uint256) {
+    function _getPositionData() internal view returns (uint256, uint256, uint256) {
         uint256 suppliedAmount = IERC20(WST_ETH_A_TOKEN).balanceOf(
             address(this)
         );
@@ -203,7 +215,8 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
 
         return (
             (suppliedAmount * MAX_BPS) / availableLiquidity,
-            availableLiquidity
+            availableLiquidity,
+            suppliedAmount
         );
     }
 }
