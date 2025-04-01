@@ -131,8 +131,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         (uint256 positionPct, uint256 availableLiquidity) = _getPositionData();
 
         if (positionPct > _maxPositionThreshold) {
-            uint256 bpsToReduce = (positionPct - _maxPositionThreshold) +
-                BPS_BUFFER;
+            uint256 bpsToReduce = positionPct + BPS_BUFFER - _maxPositionThreshold;
             uint256 excessAmount = (availableLiquidity * bpsToReduce) / MAX_BPS;
             IPool(_aaveV3Pool).withdraw(WST_ETH, excessAmount, address(this));
 
