@@ -140,6 +140,11 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
             
             /// this happens when positionPct and _maxPositionThreshold 
             /// have lower values compared to BPS_BUFFER
+            /// for example: if positionPct is 2 and _maxPositionThreshold is 1
+            /// due to BPS_BUFFER being 500, the amount needed to be withdrawn
+            /// (excessAmount) will be bigger than current position.
+            /// aave only allows to have an withdraw amount value above
+            /// the current position amount, if type(uint256).max is used
             if (excessAmount > suppliedAmount) {
                 excessAmount = suppliedAmount;
             }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {console} from "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AccessControl, IAccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
@@ -297,7 +296,8 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         manager.scaleDown();
     }
 
-    function test_minimum_deposit_successful() public {
+    function test_minimum_deposit_successful(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 4 ether, 5 ether);
         uint256 availableLiquidity = IPool(AAVE_V3_POOL)
             .getVirtualUnderlyingBalance(WST_ETH);
         uint256 maxBPS = manager.MAX_BPS();
@@ -310,7 +310,7 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         uint256 minThresholdAmount = availableLiquidity / maxBPS;
         vm.startPrank(configurator);
         manager.updateMaxPositionThreshold(maxPositionThreshold);
-        manager.depositIntoAaveV3(4.3 ether);
+        manager.depositIntoAaveV3(depositAmount);
         vm.stopPrank();
 
         (uint256 pct, uint256 newAvailableLiquidity, uint256 positionSize) = manager.getPositionData();

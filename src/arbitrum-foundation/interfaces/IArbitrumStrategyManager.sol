@@ -46,9 +46,6 @@ interface IArbitrumStrategyManager {
     /// @dev Address cannot be the zero-address
     error InvalidZeroAddress();
 
-    /// @dev Position size after deposit is below threshold
-    error InvalidDeposit();
-
     /// @notice Claims rewards from Merkl system
     /// @param tokens Array with addresses of tokens to claim rewards for
     /// @param amounts Array with amounts of tokens to claim
