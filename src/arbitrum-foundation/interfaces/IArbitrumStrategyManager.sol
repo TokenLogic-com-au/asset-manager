@@ -83,6 +83,10 @@ interface IArbitrumStrategyManager {
     /// @param newThreshold The new maximum position threshold (in bps)
     function updateMaxPositionThreshold(uint256 newThreshold) external;
 
+    /// @notice Updates the bps buffer used in scaleDown
+    /// @param newBpsBuffer The new buffer value (in bps)
+    function updateBpsBuffer(uint256 newBpsBuffer) external;
+
     /// @notice Updates the address of the Merkl contract to claim rewards from
     /// @param merkl The address of the new Merkl contract
     function updateMerkl(address merkl) external;

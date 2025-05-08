@@ -24,9 +24,6 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     /// @dev Maximum allowed basis points (100%)
     uint256 public constant MAX_BPS = 10_000;
 
-    /// @dev Buffer used when scaling down a position to not be close to threshold
-    uint256 public constant BPS_BUFFER = 500;
-
     /// @dev Address of wstETH on Arbitrum
     address public constant WST_ETH =
         0x5979D7b546E38E414F7E9822514be443A4800529;
@@ -49,6 +46,9 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
 
     /// @dev Maximum percentage of pool position can have (in bps)
     uint256 public _maxPositionThreshold = 3000;
+
+    /// @dev Buffer used when scaling down a position to not be close to threshold
+    uint256 public _bpsBuffer = 500;
 
     /// @param initialAdmin The address of the initial admin of the contract
     /// @param aaveV3Pool The address of the Aave V3 Pool
@@ -135,13 +135,13 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         ) = _getPositionData();
 
         if (positionPct >= _maxPositionThreshold) {
-            uint256 bpsToReduce = positionPct + BPS_BUFFER - _maxPositionThreshold;
+            uint256 bpsToReduce = positionPct + _bpsBuffer - _maxPositionThreshold;
             uint256 excessAmount = (availableLiquidity * bpsToReduce) / MAX_BPS;
             
             /// this happens when positionPct and _maxPositionThreshold 
-            /// have lower values compared to BPS_BUFFER
+            /// have lower values compared to _bpsBuffer
             /// for example: if positionPct is 2 bps and _maxPositionThreshold is 1 bps
-            /// due to BPS_BUFFER being 500 bps, the amount needed to be withdrawn
+            /// due to _bpsBuffer being 500 bps, the amount needed to be withdrawn
             /// (excessAmount) will be bigger than current position.
             /// aave only allows to have a withdraw amount value above
             /// the current position amount, if type(uint256).max is used
@@ -176,6 +176,18 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         _maxPositionThreshold = newThreshold;
 
         emit MaxPositionThresholdUpdated(old, newThreshold);
+    }
+
+    /// @inheritdoc IArbitrumStrategyManager
+    function updateBpsBuffer(
+        uint256 newBpsBuffer
+    ) external onlyRole(CONFIGURATOR_ROLE) {
+        require(newBpsBuffer > 0, InvalidZeroAmount());
+
+        uint256 old = _bpsBuffer;
+        _bpsBuffer = newBpsBuffer;
+
+        emit MaxPositionThresholdUpdated(old, newBpsBuffer);
     }
 
     /// @inheritdoc IArbitrumStrategyManager
