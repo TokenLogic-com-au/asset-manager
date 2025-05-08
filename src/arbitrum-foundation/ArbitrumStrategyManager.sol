@@ -118,6 +118,13 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         uint256 amount
     ) external onlyRole(CONFIGURATOR_ROLE) {
         require(amount > 0, InvalidZeroAmount());
+        
+        (, uint256 availableLiquidity, uint256 suppliedAmount) = _getPositionData();
+
+        uint256 positionPctAfterDeposit = 
+            ((suppliedAmount + amount) * MAX_BPS) / availableLiquidity;
+
+        require(positionPctAfterDeposit < _maxPositionThreshold, DepositTooBig());
 
         IERC20(WST_ETH).forceApprove(_aaveV3Pool, amount);
         IPool(_aaveV3Pool).supply(WST_ETH, amount, address(this), 0);

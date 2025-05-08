@@ -65,6 +65,10 @@ interface IArbitrumStrategyManager {
     /// @dev Address cannot be the zero-address
     error InvalidZeroAddress();
 
+    /// @dev Depositing the specified amount to Aave would place the position
+    /// above the _maxPositionThreshold
+    error DepositTooBig();
+
     /// @notice Claims rewards from Merkl system
     /// @param tokens Array with addresses of tokens to claim rewards for
     /// @param amounts Array with amounts of tokens to claim
