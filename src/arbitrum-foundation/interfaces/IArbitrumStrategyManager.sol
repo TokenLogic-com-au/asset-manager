@@ -5,6 +5,9 @@ interface IArbitrumStrategyManager {
     /// @dev Emitted when the rewards earned via Merkl are claimed by the contract
     event ClaimedMerklRewards();
 
+    /// @dev Emitted when the rewards earned via Aave are claimed by the contract
+    event ClaimedAaveRewards();
+
     /// @dev Emitted when wstETH is deposited into the Aave V3 protocol
     /// @param amount The amount of tokens deposited
     event DepositIntoAaveV3(uint256 amount);
@@ -70,6 +73,12 @@ interface IArbitrumStrategyManager {
         address[] calldata tokens,
         uint256[] calldata amounts,
         bytes32[][] calldata proofs
+    ) external;
+
+    /// @notice Claims rewards from Aave system
+    /// @param rewardToken address of the reward token
+    function claimAaveRewards(
+        address rewardToken
     ) external;
 
     /// @notice Deposits underlying tokens into the Aave V3 protocol

@@ -8,6 +8,7 @@ import {AccessControl} from "openzeppelin/access/AccessControl.sol";
 
 import {IArbitrumStrategyManager} from "src/arbitrum-foundation/interfaces/IArbitrumStrategyManager.sol";
 import {IMerkl} from "src/arbitrum-foundation/interfaces/IMerkl.sol";
+import {IncentivesController} from "src/arbitrum-foundation/interfaces/IIncentivesController.sol";
 import {IPool} from "src/arbitrum-foundation/interfaces/IPool.sol";
 
 contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
@@ -31,6 +32,10 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     /// @dev Address of the V3 wstETH aToken on Arbitrum
     address public constant WST_ETH_A_TOKEN =
         0x513c7E3a9c69cA3e22550eF58AC1C0088e918FFf;
+
+    /// @dev Address of the Aave V3 Incentives Controller
+    address internal constant AAVE_INCENTIVES_CONTROLLER =
+        0x929EC64c34a17401F460460D4B9390518E5B473e;
 
     /// @dev Address of the Arbitrum Foundation treasury
     address public immutable _arbFoundation;
@@ -90,6 +95,22 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         IMerkl(_merkl).claim(users, tokens, amounts, proofs);
 
         emit ClaimedMerklRewards();
+    }
+
+    /// @inheritdoc IArbitrumStrategyManager
+    function claimAaveRewards(
+        address rewardToken
+    ) external {
+        address[] memory assets = new address[](1);
+        assets[0] = WST_ETH;
+        IncentivesController(AAVE_INCENTIVES_CONTROLLER).claimRewards(
+            assets,
+            type(uint256).max,
+            _arbFoundation,
+            rewardToken
+        );
+
+        emit ClaimedAaveRewards();
     }
 
     /// @inheritdoc IArbitrumStrategyManager
