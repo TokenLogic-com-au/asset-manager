@@ -187,7 +187,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         uint256 old = _bpsBuffer;
         _bpsBuffer = newBpsBuffer;
 
-        emit MaxPositionThresholdUpdated(old, newBpsBuffer);
+        emit BpsBufferUpdated(old, newBpsBuffer);
     }
 
     /// @inheritdoc IArbitrumStrategyManager
