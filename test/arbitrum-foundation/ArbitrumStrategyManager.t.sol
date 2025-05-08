@@ -301,7 +301,7 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         uint256 availableLiquidity = IPool(AAVE_V3_POOL)
             .getVirtualUnderlyingBalance(WST_ETH);
         uint256 maxBPS = manager.MAX_BPS();
-        uint256 bufferBPS = manager.BPS_BUFFER();
+        uint256 bufferBPS = manager._bpsBuffer();
 
         uint256 maxPositionThreshold = 1;
         
@@ -341,7 +341,7 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         assertGt(pct, manager._maxPositionThreshold());
 
         uint256 bpsToReduce = (pct - manager._maxPositionThreshold()) +
-            manager.BPS_BUFFER();
+            manager._bpsBuffer();
         uint256 excessAmount = (availableLiquidity * bpsToReduce) /
             manager.MAX_BPS();
 
