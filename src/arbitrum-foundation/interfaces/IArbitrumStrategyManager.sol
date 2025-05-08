@@ -28,6 +28,22 @@ interface IArbitrumStrategyManager {
         uint256 newThreshold
     );
 
+    /// @dev Emitted when the bps buffer is updated
+    /// @param oldBpsBuffer The previous buffer (in bps)
+    /// @param newBpsBuffer The buffer (in bps)
+    event BpsBufferUpdated(
+        uint256 oldBpsBuffer,
+        uint256 newBpsBuffer
+    );
+
+    /// @dev Emitted when the pool address updated
+    /// @param oldPoolAddress The previous pool address
+    /// @param newPoolAddress The new pool address (in bps)
+    event PoolAddressUpdated(
+        address oldPoolAddress,
+        address newPoolAddress
+    );
+
     /// @dev Emitted when the Hypernative address is updated
     /// @param oldHypernative The previous Hypernative address
     /// @param newHypernative The new Hypernative address
@@ -86,6 +102,10 @@ interface IArbitrumStrategyManager {
     /// @notice Updates the bps buffer used in scaleDown
     /// @param newBpsBuffer The new buffer value (in bps)
     function updateBpsBuffer(uint256 newBpsBuffer) external;
+
+    /// @notice Updates the Aave pool address
+    /// @param newPoolAddress The new pool address
+    function updatePool(address newPoolAddress) external;
 
     /// @notice Updates the address of the Merkl contract to claim rewards from
     /// @param merkl The address of the new Merkl contract

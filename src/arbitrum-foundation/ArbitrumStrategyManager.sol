@@ -32,11 +32,11 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     address public constant WST_ETH_A_TOKEN =
         0x513c7E3a9c69cA3e22550eF58AC1C0088e918FFf;
 
-    /// @dev Address of the Aave V3 Pool
-    address internal immutable _aaveV3Pool;
-
     /// @dev Address of the Arbitrum Foundation treasury
     address public immutable _arbFoundation;
+
+    /// @dev Address of the Aave V3 Pool
+    address internal _aaveV3Pool;
 
     /// @dev Address of the Merkl contract to claim rewards from
     address public _merkl;
@@ -203,6 +203,18 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         _grantRole(EMERGENCY_ACTION_ROLE, hypernative);
 
         emit HypernativeUpdated(old, hypernative);
+    }
+
+    /// @inheritdoc IArbitrumStrategyManager
+    function updatePool(
+        address newPoolAddress
+    ) external onlyRole(CONFIGURATOR_ROLE) {
+        require(newPoolAddress != address(0), InvalidZeroAddress());
+
+        address old = _aaveV3Pool;
+        _aaveV3Pool = newPoolAddress;
+
+        emit PoolAddressUpdated(old, newPoolAddress);
     }
 
     /// @inheritdoc IArbitrumStrategyManager
