@@ -15,11 +15,11 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
 
     /// @notice Returns the identifier of the Configurator Role
     /// @return The bytes32 id of the Configurator role
-    bytes32 public constant CONFIGURATOR_ROLE = "CONFIGURATOR";
+    bytes32 public constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR");
 
     /// @notice Returns the identifier of the Emergency Action Role
     /// @return The bytes32 id of the Emergency Action role
-    bytes32 public constant EMERGENCY_ACTION_ROLE = "EMERGENCY_ACTION";
+    bytes32 public constant EMERGENCY_ACTION_ROLE = keccak256("EMERGENCY_ACTION");
 
     /// @dev Maximum allowed basis points (100%)
     uint256 public constant MAX_BPS = 10_000;
