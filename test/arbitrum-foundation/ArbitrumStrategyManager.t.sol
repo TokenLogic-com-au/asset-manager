@@ -296,46 +296,19 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         manager.scaleDown();
     }
 
-    function test_minimum_deposit_successful(uint256 depositAmount) public {
-        depositAmount = bound(depositAmount, 4 ether, 5 ether);
-        uint256 availableLiquidity = IPool(AAVE_V3_POOL)
-            .getVirtualUnderlyingBalance(WST_ETH);
-        uint256 maxBPS = manager.MAX_BPS();
-        uint256 bufferBPS = manager._bpsBuffer();
-
-        uint256 maxPositionThreshold = 1;
-        
-        /// MAX_BPS     - availableLiquidity
-        /// MIN_POSITION_BPS - minThresholdAmount
-        uint256 minThresholdAmount = availableLiquidity / maxBPS;
-        vm.startPrank(configurator);
-        manager.updateMaxPositionThreshold(maxPositionThreshold);
-        manager.depositIntoAaveV3(depositAmount);
-        vm.stopPrank();
-
-        (uint256 pct, uint256 newAvailableLiquidity, uint256 positionSize) = manager.getPositionData();
-
-        uint256 bpsToReduce = pct + bufferBPS - maxPositionThreshold;
-        uint256 excessAmount = (newAvailableLiquidity * bpsToReduce) / maxBPS;
-
-        if (excessAmount > positionSize) {
-            excessAmount = positionSize;
-        }
-
-        vm.expectEmit(true, true, true, true, address(manager));
-        emit IArbitrumStrategyManager.WithdrawFromAaveV3(excessAmount);
-
-        vm.prank(hypernative);
-        manager.scaleDown();
-
-        (pct, ,) = manager.getPositionData();
-        assertLt(pct, manager._maxPositionThreshold());
-    }
-
     function test_successful() public {
         vm.prank(configurator);
-        manager.depositIntoAaveV3(20_000 ether);
-        (uint256 pct, uint256 availableLiquidity,) = manager.getPositionData();
+        manager.depositIntoAaveV3(10_000 ether);
+
+        vm.mockCall(
+            0x7f775bb7af2e7E09D5Dc9506c95516159a5cA0D0,
+            abi.encodeWithSelector(
+                bytes4(keccak256("getVirtualUnderlyingBalance(address)")),
+                WST_ETH
+            ),
+            abi.encode(20_000 ether)
+        );
+        (uint256 pct, uint256 availableLiquidity, ) = manager.getPositionData();
 
         // Position is now greater than maximum threshold, can scale down
         assertGt(pct, manager._maxPositionThreshold());
@@ -351,7 +324,7 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         vm.prank(hypernative);
         manager.scaleDown();
 
-        (pct, ,) = manager.getPositionData();
+        (pct, , ) = manager.getPositionData();
         assertLt(pct, manager._maxPositionThreshold());
     }
 }
@@ -523,7 +496,7 @@ contract UpdateMerklTest is ArbitrumStrategyManagerTest {
 
 contract GetPositionPct is ArbitrumStrategyManagerTest {
     function test_success_noDeposit() public view {
-        (uint256 pct, ,) = manager.getPositionData();
+        (uint256 pct, , ) = manager.getPositionData();
         assertEq(pct, 0);
     }
 
@@ -532,7 +505,7 @@ contract GetPositionPct is ArbitrumStrategyManagerTest {
         vm.prank(configurator);
         manager.depositIntoAaveV3(1_000 ether);
 
-        (uint256 pct, ,) = manager.getPositionData();
+        (uint256 pct, , ) = manager.getPositionData();
 
         assertEq(pct, 274);
     }

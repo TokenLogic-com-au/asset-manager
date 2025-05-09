@@ -8,12 +8,15 @@ contract DesployTestScript is Script {
     ArbitrumStrategyManager public manager;
     // https://arbiscan.io/address/0x7166d92B5164884b49111703fB14f1aEEF933089
     // https://app.safe.global/home?safe=arb1:0x7166d92B5164884b49111703fB14f1aEEF933089
-    address public constant TREASURY = 0x7166d92B5164884b49111703fB14f1aEEF933089;
-    address public constant CONFIGURATOR = 0x7166d92B5164884b49111703fB14f1aEEF933089;
+    address public constant TREASURY =
+        0x7166d92B5164884b49111703fB14f1aEEF933089;
+    address public constant CONFIGURATOR =
+        0x7166d92B5164884b49111703fB14f1aEEF933089;
     address public constant ADMIN = 0x7166d92B5164884b49111703fB14f1aEEF933089;
 
-    // https://arbiscan.io/address/0xf5a216fcca274eb1b71dcd4dca5e9c3ab4870a79
-    address public constant HYPERNATIVE = 0xf5a216fcca274eb1b71dcd4dca5e9c3ab4870a79;
+    // https://arbiscan.io/address/0xF5A216Fcca274eb1b71dcD4DCa5e9C3Ab4870a79
+    address public constant HYPERNATIVE =
+        0xF5A216Fcca274eb1b71dcD4DCa5e9C3Ab4870a79;
 
     address public constant AAVE_V3_POOL =
         0x794a61358D6845594F94dc1DB02A252b5b4814aD;
