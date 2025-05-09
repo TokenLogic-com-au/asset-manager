@@ -125,7 +125,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
         ) = _getPositionData();
 
         uint256 positionPctAfterDeposit = ((suppliedAmount + amount) *
-            MAX_BPS) / availableLiquidity;
+            MAX_BPS) / (availableLiquidity + amount);
 
         require(
             positionPctAfterDeposit < _maxPositionThreshold,
