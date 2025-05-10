@@ -34,18 +34,12 @@ interface IArbitrumStrategyManager {
     /// @dev Emitted when the bps buffer is updated
     /// @param oldBpsBuffer The previous buffer (in bps)
     /// @param newBpsBuffer The buffer (in bps)
-    event BpsBufferUpdated(
-        uint256 oldBpsBuffer,
-        uint256 newBpsBuffer
-    );
+    event BpsBufferUpdated(uint256 oldBpsBuffer, uint256 newBpsBuffer);
 
     /// @dev Emitted when the pool address updated
     /// @param oldPoolAddress The previous pool address
     /// @param newPoolAddress The new pool address (in bps)
-    event PoolAddressUpdated(
-        address oldPoolAddress,
-        address newPoolAddress
-    );
+    event PoolAddressUpdated(address oldPoolAddress, address newPoolAddress);
 
     /// @dev Emitted when the Hypernative address is updated
     /// @param oldHypernative The previous Hypernative address
@@ -80,10 +74,7 @@ interface IArbitrumStrategyManager {
     ) external;
 
     /// @notice Claims rewards from Aave system
-    /// @param rewardToken address of the reward token
-    function claimAaveRewards(
-        address rewardToken
-    ) external;
+    function claimAaveRewards() external;
 
     /// @notice Deposits underlying tokens into the Aave V3 protocol
     /// @param amount The amount of tokens to deposit
@@ -128,5 +119,8 @@ interface IArbitrumStrategyManager {
     /// @return Position size in percentage (in bps)
     /// @return Available liquidity in pool
     /// @return Position size
-    function getPositionData() external view returns (uint256, uint256, uint256);
+    function getPositionData()
+        external
+        view
+        returns (uint256, uint256, uint256);
 }

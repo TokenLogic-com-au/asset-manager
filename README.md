@@ -1,7 +1,7 @@
 ## Arbitrum <> Aave wstETH Position Manager
 
 The ArbitrumStrategyManager is a smart contract developed in order to better manage the Arbitrum Foundation's holdings of wstETH in order to generate yield.
-The contract is designed for maximum simplicity and security, with very limited functionality to deposit and withdraw from Aave, as well as claiming rewards on behalf of Arbitrum Foundation, and transferring funds back to Arbitrum as well.
+The contract is designed for maximum simplicity and security, with very limited functionality to deposit and withdraw from Aave, as well as claiming rewards to be deposited into the contract to be reinvested or to be sent to the Arbitrum Foundation, and transferring funds back to Arbitrum as well.
 
 The contract leverages Hypernative in order to automatically scale down of positions or entirely withdraw from Aave. The contract is also monitored via the Hypernative platform, along with other general market metrics in order to ensure the safety of funds.
 
@@ -42,6 +42,10 @@ function claimRewards(
 ```
 
 This function is permissionless and is used in order to claim rewards from Merkl to be deposited into this contract.
+
+`function claimAaveRewards() external`
+
+This function is permissionless and is used in order to claim rewards earned from Aave to be sent to the Arbitrum Foundation address.
 
 ```
 function depositIntoAaveV3(

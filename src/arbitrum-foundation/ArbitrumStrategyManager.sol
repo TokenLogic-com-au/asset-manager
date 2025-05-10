@@ -99,14 +99,12 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
     }
 
     /// @inheritdoc IArbitrumStrategyManager
-    function claimAaveRewards(address rewardToken) external {
+    function claimAaveRewards() external {
         address[] memory assets = new address[](1);
-        assets[0] = WST_ETH;
-        IIncentivesController(AAVE_INCENTIVES_CONTROLLER).claimRewards(
+        assets[0] = WST_ETH_A_TOKEN;
+        IIncentivesController(AAVE_INCENTIVES_CONTROLLER).claimAllRewards(
             assets,
-            type(uint256).max,
-            _arbFoundation,
-            rewardToken
+            _arbFoundation
         );
 
         emit ClaimedAaveRewards();
@@ -283,7 +281,7 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
                 _maxPositionThreshold;
             uint256 excessAmount = (availableLiquidity * bpsToReduce) / MAX_BPS;
 
-            /// this happens when positionPct and _maxPositionThreshold
+            /// This can happen if positionPct and _maxPositionThreshold
             /// have lower values compared to _bpsBuffer
             /// for example: if positionPct is 2 bps and _maxPositionThreshold is 1 bps
             /// due to _bpsBuffer being 500 bps, the amount needed to be withdrawn

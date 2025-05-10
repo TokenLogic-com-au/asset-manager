@@ -168,6 +168,55 @@ contract ClaimRewardsTest is ArbitrumStrategyManagerTest {
         vm.expectRevert(ClaimRewardsTest.InvalidProof.selector);
         manager.claimRewards(tokens, amounts, proofs);
     }
+
+    function test_successful() public {
+        // Setup mock Merkl data (simplified)
+        address[] memory users = new address[](1);
+        users[0] = address(manager);
+        address[] memory tokens = new address[](1);
+        tokens[0] = WST_ETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 100 ether;
+        bytes32[][] memory proofs = new bytes32[][](1);
+        proofs[0] = new bytes32[](0); // Empty proof for simplicity
+
+        vm.mockCall(
+            MERKL_DISTRIBUTOR,
+            abi.encodeWithSelector(
+                bytes4(
+                    keccak256(
+                        "claim(address[],address[],uint256[],bytes32[][])"
+                    )
+                ),
+                users,
+                tokens,
+                amounts,
+                proofs
+            ),
+            abi.encode(0)
+        );
+
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.ClaimedMerklRewards();
+        manager.claimRewards(tokens, amounts, proofs);
+    }
+}
+
+contract ClaimAaveRewardsTest is ArbitrumStrategyManagerTest {
+    function test_successful() public {
+        uint256 amount = 1_000 ether;
+
+        vm.startPrank(configurator);
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.DepositIntoAaveV3(amount);
+        manager.depositIntoAaveV3(amount);
+
+        vm.warp(block.timestamp + 30 days);
+
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.ClaimedAaveRewards();
+        manager.claimAaveRewards();
+    }
 }
 
 contract DepositIntoAaveV3Test is ArbitrumStrategyManagerTest {
@@ -190,6 +239,17 @@ contract DepositIntoAaveV3Test is ArbitrumStrategyManagerTest {
             )
         );
         manager.depositIntoAaveV3(0);
+        vm.stopPrank();
+    }
+
+    function test_revertsIf_depositIsTooBig() public {
+        vm.startPrank(configurator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IArbitrumStrategyManager.DepositTooBig.selector
+            )
+        );
+        manager.depositIntoAaveV3(50_000 ether);
         vm.stopPrank();
     }
 
@@ -296,12 +356,59 @@ contract ScaleDownTest is ArbitrumStrategyManagerTest {
         manager.scaleDown();
     }
 
+    function test_successful_minimumDeposit(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 40 ether, 50 ether);
+
+        uint256 availableLiquidity = IPool(AAVE_V3_POOL)
+            .getVirtualUnderlyingBalance(WST_ETH);
+        uint256 maxPositionThreshold = 100;
+
+        /// MAX_BPS - availableLiquidity
+        /// MIN_POSITION_BPS - minThresholdAmount
+        vm.startPrank(configurator);
+        manager.updateMaxPositionThreshold(maxPositionThreshold);
+        manager.depositIntoAaveV3(depositAmount);
+        vm.stopPrank();
+
+        (
+            uint256 pct,
+            uint256 newAvailableLiquidity,
+            uint256 positionSize
+        ) = manager.getPositionData();
+
+        uint256 bpsToReduce = pct + manager._bpsBuffer() - maxPositionThreshold;
+        uint256 excessAmount = (newAvailableLiquidity * bpsToReduce) /
+            manager.MAX_BPS();
+
+        if (excessAmount > positionSize) {
+            excessAmount = positionSize;
+        }
+
+        vm.mockCall(
+            AAVE_V3_POOL,
+            abi.encodeWithSelector(
+                bytes4(keccak256("getVirtualUnderlyingBalance(address)")),
+                WST_ETH
+            ),
+            abi.encode(3_000 ether)
+        );
+
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.WithdrawFromAaveV3(excessAmount);
+
+        vm.prank(hypernative);
+        manager.scaleDown();
+
+        (pct, , ) = manager.getPositionData();
+        assertLt(pct, manager._maxPositionThreshold());
+    }
+
     function test_successful() public {
         vm.prank(configurator);
         manager.depositIntoAaveV3(10_000 ether);
 
         vm.mockCall(
-            0x7f775bb7af2e7E09D5Dc9506c95516159a5cA0D0,
+            AAVE_V3_POOL,
             abi.encodeWithSelector(
                 bytes4(keccak256("getVirtualUnderlyingBalance(address)")),
                 WST_ETH
@@ -374,6 +481,16 @@ contract UpdateMaxThresholdTest is ArbitrumStrategyManagerTest {
             )
         );
         manager.updateMaxPositionThreshold(500);
+    }
+
+    function test_revertsIf_invalidZeroThreshold() public {
+        vm.startPrank(configurator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IArbitrumStrategyManager.InvalidZeroAmount.selector
+            )
+        );
+        manager.updateMaxPositionThreshold(0);
     }
 
     function test_revertsIf_invalidThreshold() public {
@@ -491,6 +608,68 @@ contract UpdateMerklTest is ArbitrumStrategyManagerTest {
         vm.expectEmit(true, true, true, true, address(manager));
         emit IArbitrumStrategyManager.MerklUpdated(MERKL_DISTRIBUTOR, newMerkl);
         manager.updateMerkl(newMerkl);
+    }
+}
+
+contract UpdateBpsBufferTest is ArbitrumStrategyManagerTest {
+    function test_revertsIf_noRole() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                manager.CONFIGURATOR_ROLE()
+            )
+        );
+        manager.updateBpsBuffer(1);
+    }
+
+    function test_revertsIf_zeroAddress() public {
+        vm.startPrank(configurator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IArbitrumStrategyManager.InvalidZeroAmount.selector
+            )
+        );
+        manager.updateBpsBuffer(0);
+    }
+
+    function test_success() public {
+        uint256 newBuffer = 350;
+        vm.startPrank(configurator);
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.BpsBufferUpdated(500, newBuffer);
+        manager.updateBpsBuffer(newBuffer);
+    }
+}
+
+contract UpdateAaveV3PoolTest is ArbitrumStrategyManagerTest {
+    function test_revertsIf_noRole() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                manager.CONFIGURATOR_ROLE()
+            )
+        );
+        manager.updatePool(address(0x123));
+    }
+
+    function test_revertsIf_zeroAddress() public {
+        vm.startPrank(configurator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IArbitrumStrategyManager.InvalidZeroAddress.selector
+            )
+        );
+        manager.updatePool(address(0));
+    }
+
+    function test_success() public {
+        address newPool = address(0x456);
+        vm.startPrank(configurator);
+        vm.expectEmit(true, true, true, true, address(manager));
+        emit IArbitrumStrategyManager.PoolAddressUpdated(AAVE_V3_POOL, newPool);
+        manager.updatePool(newPool);
     }
 }
 
