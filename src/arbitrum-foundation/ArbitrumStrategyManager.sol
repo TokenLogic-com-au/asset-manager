@@ -281,13 +281,14 @@ contract ArbitrumStrategyManager is IArbitrumStrategyManager, AccessControl {
                 _maxPositionThreshold;
             uint256 excessAmount = (availableLiquidity * bpsToReduce) / MAX_BPS;
 
-            /// This can happen if positionPct and _maxPositionThreshold
-            /// have lower values compared to _bpsBuffer
-            /// for example: if positionPct is 2 bps and _maxPositionThreshold is 1 bps
-            /// due to _bpsBuffer being 500 bps, the amount needed to be withdrawn
-            /// (excessAmount) will be bigger than current position.
-            /// aave only allows to have a withdraw amount value above
-            /// the current position amount, if type(uint256).max is used
+            /// This can potentially happen if positionPct and _maxPositionThreshold
+            /// have lower values than _bpsBuffer.
+            /// For example: if positionPct is 2 bps and _maxPositionThreshold is 1 bps
+            /// while _bpsBuffer is 500 bps, the amount needed to be withdrawn
+            /// (excessAmount) will be bigger than the current position.
+            /// AAVE only allows withdraw amounts greater than the current position
+            /// amount if type(uint256).max is passed as the parameter, otherwise,
+            /// the value must be lower for it not to revert.
             if (excessAmount > suppliedAmount) {
                 excessAmount = suppliedAmount;
             }
